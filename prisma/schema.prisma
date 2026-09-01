@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String
+  passwordHash String
+  role         String            @default("ADMIN")
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  notes        ApplicationNote[]
+
+  @@map("admin_users")
+}
+
+model Customer {
+  id           String        @id @default(cuid())
+  name         String
+  whatsapp     String
+  email        String?
+  city         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  applications Application[]
+  businesses   Business[]
+
+  @@map("customers")
+}
+
+model Business {
+  id                String        @id @default(cuid())
+  customerId        String
+  name              String
+  type              String
+  category          String
+  address           String?
+  productCount      Int           @default(1)
+  productNames      String?
+  hasNIB            Boolean       @default(false)
+  hasIngredientDocs Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  applications      Application[]
+  customer          Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("businesses")
+}
+
+model Application {
+  id            String                     @id @default(cuid())
+  code          String                     @unique
+  customerId    String
+  businessId    String
+  packageId     String?
+  status        String                     @default("PENGAJUAN_DITERIMA")
+  submittedAt   DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  completedAt   DateTime?
+  adminNote     String?
+  internalNote  String?
+  notes         ApplicationNote[]
+  statusHistory ApplicationStatusHistory[]
+  package       Package?                   @relation(fields: [packageId], references: [id])
+  business      Business                   @relation(fields: [businessId], references: [id])
+  customer      Customer                   @relation(fields: [customerId], references: [id])
+  documents     Document[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([submittedAt])
+  @@map("applications")
+}
+
+model ApplicationStatusHistory {
+  id            String      @id @default(cuid())
+  applicationId String
+  status        String
+  changedAt     DateTime    @default(now())
+  changedBy     String?
+  note          String?
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("application_status_history")
+}
+
+model ApplicationNote {
+  id            String      @id @default(cuid())
+  applicationId String
+  adminId       String?
+  content       String
+  isPublic      Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  admin         AdminUser?  @relation(fields: [adminId], references: [id])
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("application_notes")
+}
+
+model Document {
+  id            String      @id @default(cuid())
+  applicationId String
+  type          String      @default("OTHER")
+  fileName      String
+  storedName    String
+  fileSize      Int
+  mimeType      String
+  status        String      @default("UPLOADED")
+  uploadedAt    DateTime    @default(now())
+  reviewedAt    DateTime?
+  reviewNote    String?
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("documents")
+}
+
+model Package {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  description  String
+  price        Int           @default(0)
+  priceLabel   String?
+  features     String        @default("[]")
+  isActive     Boolean       @default(true)
+  isFeatured   Boolean       @default(false)
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  applications Application[]
+
+  @@map("packages")
+}
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  category  String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+model Testimonial {
+  id           String   @id @default(cuid())
+  name         String
+  businessName String?
+  businessType String?
+  content      String
+  rating       Int      @default(5)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  location     String?
+  photoUrl     String?
+
+  @@map("testimonials")
+}
+
+model Certificate {
+  id           String   @id @default(cuid())
+  businessName String
+  productName  String?
+  year         Int
+  description  String?
+  imageUrl     String?
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("certificates")
+}
+
+model ApplicationSequence {
+  id      String @id @default("singleton")
+  year    Int    @default(2026)
+  lastSeq Int    @default(0)
+
+  @@map("application_sequences")
+}
