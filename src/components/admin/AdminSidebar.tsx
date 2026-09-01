@@ -15,6 +15,7 @@ import {
   Shield,
   ChevronRight,
   BadgeCheck,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import type { AdminSession } from '@/lib/auth'
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/admin/certificates', label: 'Sertifikat', icon: BadgeCheck },
   { href: '/admin/testimonials', label: 'Testimoni', icon: MessageSquare },
   { href: '/admin/faqs', label: 'FAQ', icon: HelpCircle },
+  { href: '/admin/settings', label: 'Pengaturan', icon: Settings },
 ]
 
 interface SidebarContentProps {

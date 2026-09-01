@@ -38,7 +38,7 @@ interface Application {
   statusHistory: Array<{ id: string; status: string; changedAt: string | Date; changedBy: string | null; note: string | null }>
   documents: Array<{
     id: string; type: string; fileName: string; fileSize: number
-    mimeType: string; status: string; uploadedAt: string | Date; reviewNote: string | null
+    mimeType: string; storedUrl: string | null; status: string; uploadedAt: string | Date; reviewNote: string | null
   }>
   notes: Array<{
     id: string; content: string; isPublic: boolean; createdAt: string | Date
@@ -223,6 +223,16 @@ export function ApplicationDetail({ application: initialApp }: Props) {
                       </div>
                       <p className="text-xs text-gray-600 truncate">{doc.fileName}</p>
                       <p className="text-xs text-gray-400">{formatFileSize(doc.fileSize)} · {formatDateTime(doc.uploadedAt)}</p>
+                      {doc.storedUrl && (
+                        <a
+                          href={doc.storedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline mt-0.5 inline-block"
+                        >
+                          Lihat dokumen →
+                        </a>
+                      )}
                       {doc.reviewNote && (
                         <p className="text-xs text-orange-700 bg-orange-50 rounded px-2 py-1 mt-1">{doc.reviewNote}</p>
                       )}

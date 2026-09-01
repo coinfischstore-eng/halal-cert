@@ -1,77 +1,97 @@
+// Prisma Schema - Jasa Pendampingan Sertifikasi Halal
+// PostgreSQL (production) via Neon / Supabase
+// SQLite (development) — switch provider via DATABASE_URL
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+// ============================================================
+// AUTH / ADMIN
+// ============================================================
+
 model AdminUser {
-  id           String            @id @default(cuid())
-  email        String            @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   name         String
   passwordHash String
-  role         String            @default("ADMIN")
-  isActive     Boolean           @default(true)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  role         String   @default("ADMIN")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   notes        ApplicationNote[]
 
   @@map("admin_users")
 }
 
+// ============================================================
+// CUSTOMER & BUSINESS
+// ============================================================
+
 model Customer {
-  id           String        @id @default(cuid())
-  name         String
-  whatsapp     String
-  email        String?
-  city         String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  applications Application[]
+  id          String   @id @default(cuid())
+  name        String
+  whatsapp    String
+  email       String?
+  city        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   businesses   Business[]
+  applications Application[]
 
   @@map("customers")
 }
 
 model Business {
-  id                String        @id @default(cuid())
+  id                String   @id @default(cuid())
   customerId        String
   name              String
   type              String
   category          String
   address           String?
-  productCount      Int           @default(1)
+  productCount      Int      @default(1)
   productNames      String?
-  hasNIB            Boolean       @default(false)
-  hasIngredientDocs Boolean       @default(false)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  applications      Application[]
-  customer          Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  hasNIB            Boolean  @default(false)
+  hasIngredientDocs Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  applications Application[]
 
   @@map("businesses")
 }
 
+// ============================================================
+// APPLICATION
+// ============================================================
+
 model Application {
-  id            String                     @id @default(cuid())
-  code          String                     @unique
-  customerId    String
-  businessId    String
-  packageId     String?
-  status        String                     @default("PENGAJUAN_DITERIMA")
-  submittedAt   DateTime                   @default(now())
-  updatedAt     DateTime                   @updatedAt
-  completedAt   DateTime?
-  adminNote     String?
-  internalNote  String?
-  notes         ApplicationNote[]
-  statusHistory ApplicationStatusHistory[]
-  package       Package?                   @relation(fields: [packageId], references: [id])
-  business      Business                   @relation(fields: [businessId], references: [id])
+  id           String    @id @default(cuid())
+  code         String    @unique
+  customerId   String
+  businessId   String
+  packageId    String?
+  status       String    @default("PENGAJUAN_DITERIMA")
+  submittedAt  DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  completedAt  DateTime?
+  adminNote    String?
+  internalNote String?
+
   customer      Customer                   @relation(fields: [customerId], references: [id])
+  business      Business                   @relation(fields: [businessId], references: [id])
+  package       Package?                   @relation(fields: [packageId], references: [id])
+  statusHistory ApplicationStatusHistory[]
   documents     Document[]
+  notes         ApplicationNote[]
 
   @@index([customerId])
   @@index([status])
@@ -80,67 +100,84 @@ model Application {
 }
 
 model ApplicationStatusHistory {
-  id            String      @id @default(cuid())
+  id            String   @id @default(cuid())
   applicationId String
   status        String
-  changedAt     DateTime    @default(now())
+  changedAt     DateTime @default(now())
   changedBy     String?
   note          String?
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([applicationId])
   @@map("application_status_history")
 }
 
 model ApplicationNote {
-  id            String      @id @default(cuid())
+  id            String   @id @default(cuid())
   applicationId String
   adminId       String?
   content       String
-  isPublic      Boolean     @default(false)
-  createdAt     DateTime    @default(now())
-  admin         AdminUser?  @relation(fields: [adminId], references: [id])
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  isPublic      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  admin       AdminUser?  @relation(fields: [adminId], references: [id])
 
   @@index([applicationId])
   @@map("application_notes")
 }
 
+// ============================================================
+// DOCUMENTS
+// ============================================================
+
 model Document {
-  id            String      @id @default(cuid())
+  id            String    @id @default(cuid())
   applicationId String
-  type          String      @default("OTHER")
+  type          String    @default("OTHER")
   fileName      String
   storedName    String
+  storedUrl     String?   // full URL (Cloudinary) or null for local dev
   fileSize      Int
   mimeType      String
-  status        String      @default("UPLOADED")
-  uploadedAt    DateTime    @default(now())
+  status        String    @default("UPLOADED")
+  uploadedAt    DateTime  @default(now())
   reviewedAt    DateTime?
   reviewNote    String?
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([applicationId])
   @@map("documents")
 }
 
+// ============================================================
+// PACKAGES
+// ============================================================
+
 model Package {
-  id           String        @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
-  slug         String        @unique
+  slug         String   @unique
   description  String
-  price        Int           @default(0)
+  price        Int      @default(0)
   priceLabel   String?
-  features     String        @default("[]")
-  isActive     Boolean       @default(true)
-  isFeatured   Boolean       @default(false)
-  sortOrder    Int           @default(0)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  features     String   @default("[]")
+  isActive     Boolean  @default(true)
+  isFeatured   Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   applications Application[]
 
   @@map("packages")
 }
+
+// ============================================================
+// FAQ
+// ============================================================
 
 model FAQ {
   id        String   @id @default(cuid())
@@ -155,22 +192,30 @@ model FAQ {
   @@map("faqs")
 }
 
+// ============================================================
+// TESTIMONIALS
+// ============================================================
+
 model Testimonial {
   id           String   @id @default(cuid())
   name         String
   businessName String?
   businessType String?
+  location     String?
   content      String
   rating       Int      @default(5)
+  photoUrl     String?
   isActive     Boolean  @default(true)
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  location     String?
-  photoUrl     String?
 
   @@map("testimonials")
 }
+
+// ============================================================
+// CERTIFICATES
+// ============================================================
 
 model Certificate {
   id           String   @id @default(cuid())
@@ -186,6 +231,10 @@ model Certificate {
 
   @@map("certificates")
 }
+
+// ============================================================
+// APPLICATION CODE SEQUENCE
+// ============================================================
 
 model ApplicationSequence {
   id      String @id @default("singleton")

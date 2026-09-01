@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
 import { prisma } from '@/lib/prisma'
 import { normalizeWhatsApp, isAllowedFileType, MAX_FILE_SIZE_BYTES } from '@/lib/utils'
-import { v4 as uuidv4 } from 'uuid'
-
-const UPLOAD_BASE = 'uploads'
+import { saveDocumentFile } from '@/lib/storage'
 
 const DOCUMENT_TYPES = ['NIB', 'KTP', 'INGREDIENT_LIST', 'PRODUCT_PHOTO', 'OTHER']
 
@@ -51,28 +46,33 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isAllowedFileType(file.type)) {
-      return NextResponse.json({ error: 'Tipe file tidak diizinkan. Gunakan JPG, PNG, WebP, atau PDF.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Tipe file tidak diizinkan. Gunakan JPG, PNG, WebP, atau PDF.' },
+        { status: 400 }
+      )
     }
 
-    // Save file
-    const ext = file.name.split('.').pop() || 'bin'
-    const storedName = `${uuidv4()}.${ext}`
-    const uploadPath = path.join(process.cwd(), UPLOAD_BASE, application.id)
+    // Save file to cloud or local storage
+    const storedUrl = await saveDocumentFile(file, application.id)
 
-    if (!existsSync(uploadPath)) {
-      await mkdir(uploadPath, { recursive: true })
+    // Derive safe extension from MIME type (ignore user-provided filename extension)
+    const mimeToExt: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'application/pdf': 'pdf',
     }
+    const ext = mimeToExt[file.type] ?? 'bin'
+    const storedName = storedUrl.split('/').pop() ?? `file.${ext}`
 
-    const bytes = await file.arrayBuffer()
-    await writeFile(path.join(uploadPath, storedName), Buffer.from(bytes))
-
-    // Save to DB
+    // Save metadata to DB
     const doc = await prisma.document.create({
       data: {
         applicationId: application.id,
         type: documentType,
-        fileName: file.name,
+        fileName: file.name.replace(/[^\w.\-]/g, '_').slice(0, 255), // sanitize original name for display
         storedName,
+        storedUrl: process.env.CLOUDINARY_URL ? storedUrl : null,
         fileSize: file.size,
         mimeType: file.type,
         status: 'UPLOADED',

@@ -49,3 +49,13 @@ next-env.d.ts
 
 prisma/dev.db
 prisma/dev.db-journal
+
+# Local file uploads (dev only — production uses cloud storage)
+/uploads/
+/public/uploads/testimonials/
+/public/uploads/certificates/
+/public/uploads/documents/
+
+# Sensitive env files
+.env.production
+.env.production.local
